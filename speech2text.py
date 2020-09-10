@@ -1,0 +1,84 @@
+import os
+import sys
+import speech_recognition as sr
+from pydub import AudioSegment
+from pydub.silence import split_on_silence
+
+
+input_file = sys.argv[1]
+output_file = "output.txt"
+
+# a function that splits the audio file into chunks
+# and applies speech recognition
+def get_large_audio_transcription(input_file):
+    """
+    Splitting the large audio file into chunks
+    and apply speech recognition on each of these chunks
+    """
+    # open the audio file using pydub
+    sound = AudioSegment.from_wav(input_file)
+    # split audio sound where silence is 700 miliseconds or more and get chunks
+    chunks = split_on_silence(
+        sound,
+        # experiment with this value for your target audio file
+        min_silence_len=500,
+        # adjust this per requirement
+        silence_thresh=sound.dBFS - 14,
+        # keep the silence for 1 second, adjustable as well
+        keep_silence=500,
+    )
+    folder_name = "audio-chunks"
+    # create a directory to store the audio chunks
+    if not os.path.isdir(folder_name):
+        os.mkdir(folder_name)
+    whole_text = ""
+    # process each chunk
+
+    for i, audio_chunk in enumerate(chunks, start=1):
+        # export audio chunk and save it in
+        # the `folder_name` directory.
+        chunk_filename = os.path.join(folder_name, f"chunk{i}.wav")
+        audio_chunk.export(chunk_filename, format="wav")
+        # recognize the chunk
+        with sr.AudioFile(chunk_filename) as source:
+            audio_listened = r.record(source)
+            # try converting it to text
+            with open(output_file, "a") as f:
+                try:
+                    text = r.recognize_google(audio_listened)
+                except sr.UnknownValueError as e:
+                    print("Error:", str(e))
+                    print("Error:", str(e), file=f)
+                else:
+                    text = f"{text.capitalize()}."
+                    print(chunk_filename, ":", text)
+                    print(chunk_filename, ":", text, file=f)
+                    whole_text += text
+
+    # return the text for all chunks detected
+    return whole_text
+
+
+if __name__ == "__main__":
+    # initialize the recognizer
+    r = sr.Recognizer()
+
+    # check the existance of the output file
+    if os.path.exists(output_file):
+        while True:
+            answer = input("Do you want to overwirte the output? (y/n): ")
+            if answer == "y":
+                print("process started")
+                get_large_audio_transcription(input_file)
+                print("process completed")
+                break
+            elif answer == "n":
+                print("process terminated")
+                break
+            else:
+                print("process terminated")
+                break
+    else:
+        print("process started")
+        get_large_audio_transcription(input_file)
+        print("process completed")
